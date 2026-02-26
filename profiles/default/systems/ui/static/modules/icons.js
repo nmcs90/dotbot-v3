@@ -84,6 +84,12 @@ function replaceIconPlaceholders() {
         whisperIcon.innerHTML = getIcon('chatBubble', 14);
     }
 
+    // Replace header "Open in VS Code" icon
+    const openVsCodeIcon = document.querySelector('.open-vscode-icon');
+    if (openVsCodeIcon) {
+        openVsCodeIcon.innerHTML = getIcon('vscode', 14) || getIcon('code', 14);
+    }
+
     // Replace whisper modal header icon
     const whisperModalIcon = document.querySelector('.whisper-modal .modal-icon');
     if (whisperModalIcon) {

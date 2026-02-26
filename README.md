@@ -96,7 +96,7 @@ Opens the web dashboard at `http://localhost:8686`
 dotbot help          # Show all commands
 dotbot status        # Check installation status
 dotbot init          # Add dotbot to current project
-dotbot init -Force   # Reinitialize (overwrites existing)
+dotbot init --force  # Reinitialize (overwrites existing)
 ```
 
 ### Update Installation

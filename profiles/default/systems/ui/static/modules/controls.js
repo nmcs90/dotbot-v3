@@ -924,6 +924,49 @@ function initSteeringPanel() {
 
     // Initialize whisper modal toggle
     initWhisperModal();
+    initHeaderActions();
+}
+
+/**
+ * Initialize header action handlers.
+ */
+function initHeaderActions() {
+    const openVsCodeBtn = document.getElementById('open-vscode-btn');
+    if (!openVsCodeBtn) return;
+
+    openVsCodeBtn.addEventListener('click', async () => {
+        if (openVsCodeBtn.disabled) return;
+
+        const originalHtml = openVsCodeBtn.innerHTML;
+        openVsCodeBtn.disabled = true;
+        openVsCodeBtn.textContent = 'Opening...';
+
+        try {
+            const response = await fetch(`${API_BASE}/api/open-vscode`, {
+                method: 'POST'
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || `HTTP ${response.status}`);
+            }
+
+            if (typeof showToast === 'function') {
+                showToast('Opened project in VS Code', 'success');
+            } else {
+                showSignalFeedback('Opened project in VS Code');
+            }
+        } catch (error) {
+            if (typeof showToast === 'function') {
+                showToast(`Failed to open VS Code: ${error.message}`, 'error');
+            } else {
+                showSignalFeedback(`Error: ${error.message}`);
+            }
+        } finally {
+            openVsCodeBtn.disabled = false;
+            openVsCodeBtn.innerHTML = originalHtml;
+        }
+    });
 }
 
 /**

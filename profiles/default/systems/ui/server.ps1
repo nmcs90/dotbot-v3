@@ -535,6 +535,49 @@ try {
 
                 # --- Control & Whisper ---
 
+                "/api/open-vscode" {
+                    if ($method -eq "POST") {
+                        $contentType = "application/json; charset=utf-8"
+                        try {
+                            $codeCommand = Get-Command code -ErrorAction SilentlyContinue
+                            if (-not $codeCommand) {
+                                $codeCommand = Get-Command code.cmd -ErrorAction SilentlyContinue
+                            }
+
+                            if ($codeCommand) {
+                                Start-Process -FilePath $codeCommand.Source -ArgumentList @($projectRoot) -WorkingDirectory $projectRoot | Out-Null
+                            } else {
+                                $candidatePaths = @()
+                                if ($env:LOCALAPPDATA) {
+                                    $candidatePaths += Join-Path $env:LOCALAPPDATA "Programs\Microsoft VS Code\Code.exe"
+                                }
+                                if ($env:ProgramFiles) {
+                                    $candidatePaths += Join-Path $env:ProgramFiles "Microsoft VS Code\Code.exe"
+                                }
+                                if (${env:ProgramFiles(x86)}) {
+                                    $candidatePaths += Join-Path ${env:ProgramFiles(x86)} "Microsoft VS Code\Code.exe"
+                                }
+
+                                $codeExe = $candidatePaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+                                if ($codeExe) {
+                                    Start-Process -FilePath $codeExe -ArgumentList @($projectRoot) -WorkingDirectory $projectRoot | Out-Null
+                                } else {
+                                    throw "VS Code not found. Ensure VS Code is installed and the 'code' CLI is available."
+                                }
+                            }
+
+                            $content = @{ success = $true; path = $projectRoot } | ConvertTo-Json -Compress
+                        } catch {
+                            $statusCode = 500
+                            $content = @{ success = $false; error = "Failed to open VS Code: $($_.Exception.Message)" } | ConvertTo-Json -Compress
+                        }
+                    } else {
+                        $statusCode = 405
+                        $content = "Method not allowed"
+                    }
+                    break
+                }
+
                 "/api/control" {
                     if ($method -eq "POST") {
                         $contentType = "application/json; charset=utf-8"
