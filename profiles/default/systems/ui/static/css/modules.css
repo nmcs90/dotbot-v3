@@ -783,7 +783,7 @@
 }
 
 .kickstart-question.answered .kickstart-freetext-input {
-    opacity: 0.7;
+    opacity: 1;
 }
 
 .kickstart-question-freetext {
