@@ -93,6 +93,7 @@ if (-not (Test-Path $processesDir)) {
 Import-Module "$PSScriptRoot\ProviderCLI\ProviderCLI.psm1" -Force
 Import-Module "$PSScriptRoot\ClaudeCLI\ClaudeCLI.psm1" -Force
 Import-Module "$PSScriptRoot\modules\DotBotTheme.psm1" -Force
+Import-Module "$PSScriptRoot\modules\InstanceId.psm1" -Force
 $t = Get-DotBotTheme
 
 . "$PSScriptRoot\modules\ui-rendering.ps1"
@@ -130,14 +131,11 @@ $settings = @{ execution = @{ model = 'Opus' }; analysis = @{ model = 'Opus' } }
 if (Test-Path $settingsPath) {
     try { $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json } catch {}
 }
-# Workspace instance ID (stable per .bot workspace)
-$instanceId = ""
-if ($settings -is [System.Collections.IDictionary]) {
-    if ($settings.ContainsKey('instance_id') -and $settings['instance_id']) {
-        $instanceId = "$($settings['instance_id'])"
-    }
-} elseif ($settings.PSObject.Properties['instance_id'] -and $settings.instance_id) {
-    $instanceId = "$($settings.instance_id)"
+# Workspace instance ID (stable per .bot workspace).
+# For legacy projects missing this field, create and persist one.
+$instanceId = Get-OrCreateWorkspaceInstanceId -SettingsPath $settingsPath
+if (-not $instanceId) {
+    $instanceId = ""
 }
 
 # Load provider config

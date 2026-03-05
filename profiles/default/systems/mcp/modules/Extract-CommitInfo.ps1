@@ -79,13 +79,12 @@ function Get-TaskCommitInfo {
                 if ($commitSubject -is [array]) { $commitSubject = $commitSubject[0] }
                 if ($commitTimestamp -is [array]) { $commitTimestamp = $commitTimestamp[0] }
 
-                # Extract workspace short ID tag when present: [bot:XXXXXXXX]
+                # Extract workspace short ID from [bot:XXXXXXXX] or [bot:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx]
                 $workspaceShortId = $null
-                $botTagMatch = [regex]::Match($commitMessage, '\[bot:([0-9a-fA-F]{8})\]')
+                $botTagMatch = [regex]::Match($commitMessage, '\[bot:([0-9a-fA-F]{8})(?:-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?\]')
                 if ($botTagMatch.Success) {
                     $workspaceShortId = $botTagMatch.Groups[1].Value.ToLowerInvariant()
                 }
-
                 # Get file changes for this commit
                 $fileChanges = Get-CommitFileChanges -CommitSha $sha
 
