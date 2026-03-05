@@ -130,6 +130,15 @@ $settings = @{ execution = @{ model = 'Opus' }; analysis = @{ model = 'Opus' } }
 if (Test-Path $settingsPath) {
     try { $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json } catch {}
 }
+# Workspace instance ID (stable per .bot workspace)
+$instanceId = ""
+if ($settings -is [System.Collections.IDictionary]) {
+    if ($settings.ContainsKey('instance_id') -and $settings['instance_id']) {
+        $instanceId = "$($settings['instance_id'])"
+    }
+} elseif ($settings.PSObject.Properties['instance_id'] -and $settings.instance_id) {
+    $instanceId = "$($settings.instance_id)"
+}
 
 # Load provider config
 $providerConfig = Get-ProviderConfig
@@ -932,7 +941,8 @@ if ($Type -in @('analysis', 'execution')) {
                     -SessionId $sessionId `
                     -ProductMission $productMission `
                     -EntityModel $entityModel `
-                    -StandardsList $standardsList
+                    -StandardsList $standardsList `
+                    -InstanceId $instanceId
 
                 $branchForPrompt = if ($branchName) { $branchName } else { "main" }
                 $prompt = $prompt -replace '\{\{BRANCH_NAME\}\}', $branchForPrompt
@@ -1684,7 +1694,8 @@ Do NOT implement the task. Your job is research and preparation only.
                 -SessionId $sessionId `
                 -ProductMission $productMission `
                 -EntityModel $entityModel `
-                -StandardsList $standardsList
+                -StandardsList $standardsList `
+                -InstanceId $instanceId
 
             $branchForPrompt = if ($branchName) { $branchName } else { "main" }
             $executionPrompt = $executionPrompt -replace '\{\{BRANCH_NAME\}\}', $branchForPrompt

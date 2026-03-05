@@ -200,6 +200,7 @@ Follow the research methodology prompt as your primary guide. The methodology de
    git commit -m "Research: {task_name}
 
    [task:XXXXXXXX]
+   [bot:XXXXXXXX]
    Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
    ```
 

@@ -49,7 +49,10 @@ function Build-TaskPrompt {
         [string]$EntityModel = "No entity model file found.",
         
         [Parameter(Mandatory = $false)]
-        [string]$StandardsList = "No standards files found."
+        [string]$StandardsList = "No standards files found.",
+
+        [Parameter(Mandatory = $false)]
+        [string]$InstanceId = ""
     )
     
     # Start with template
@@ -64,6 +67,7 @@ function Build-TaskPrompt {
     $prompt = $prompt -replace '\{\{TASK_DESCRIPTION\}\}', $Task.description
     $prompt = $prompt -replace '\{\{PRODUCT_MISSION\}\}', $ProductMission
     $prompt = $prompt -replace '\{\{ENTITY_MODEL\}\}', $EntityModel
+    $prompt = $prompt -replace '\{\{INSTANCE_ID\}\}', $InstanceId
     
     # Format and replace applicable standards
     $applicableStandards = ""
