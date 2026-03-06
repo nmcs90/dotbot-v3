@@ -1043,10 +1043,16 @@ if (Test-Path $kickstartViaPrProfile) {
                         }
                     }
 
-                    if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/42/files') {
+                    if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/42/files?per_page=100&page=1') {
                         return @(
                             [pscustomobject]@{ filename = 'src/BillingService.cs'; status = 'modified' },
                             [pscustomobject]@{ filename = 'tests/BillingServiceTests.cs'; status = 'added' }
+                        )
+                    }
+
+                    if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/42/files?per_page=100&page=2') {
+                        return @(
+                            [pscustomobject]@{ filename = 'docs/billing.md'; status = 'modified' }
                         )
                     }
 
@@ -1068,15 +1074,16 @@ if (Test-Path $kickstartViaPrProfile) {
             Assert-Equal -Name "Invoke-PrContext GitHub URL: provider" -Expected 'github' -Actual $githubResult.provider
             Assert-Equal -Name "Invoke-PrContext GitHub URL: title" -Expected 'Add billing validation' -Actual $githubResult.title
             Assert-Equal -Name "Invoke-PrContext GitHub URL: linked issue count" -Expected 1 -Actual @($githubResult.linked_issues).Count
-            Assert-Equal -Name "Invoke-PrContext GitHub URL: changed file count" -Expected 2 -Actual @($githubResult.changed_files).Count
+            Assert-Equal -Name "Invoke-PrContext GitHub URL: changed file count" -Expected 3 -Actual @($githubResult.changed_files).Count
             Assert-Equal -Name "Invoke-PrContext GitHub URL: first changed file path" -Expected 'src/BillingService.cs' -Actual $githubResult.changed_files[0].path
+            Assert-Equal -Name "Invoke-PrContext GitHub URL: paginated file path included" -Expected 'docs/billing.md' -Actual $githubResult.changed_files[2].path
 
             $githubAutoResult = & {
                 function git {
                     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
                     $joined = $Arguments -join ' '
                     switch ($joined) {
-                        'remote get-url origin' { return 'https://github.com/acme/widgets.git' }
+                        'remote get-url origin' { return 'https://github.com/acme/service.api.git' }
                         'branch --show-current' { return 'feature/billing-validation' }
                         default { throw "Unexpected git invocation: $joined" }
                     }
@@ -1089,13 +1096,13 @@ if (Test-Path $kickstartViaPrProfile) {
                         $Headers
                     )
 
-                    if ($Uri -like 'https://api.github.com/repos/acme/widgets/pulls?*head=acme:feature/billing-validation*state=open*') {
+                    if ($Uri -like 'https://api.github.com/repos/acme/service.api/pulls?*head=acme:feature/billing-validation*state=open*') {
                         return @(
                             [pscustomobject]@{
                                 number = 77
                                 title = 'Auto-detected PR'
                                 body = 'Detect current branch PR'
-                                html_url = 'https://github.com/acme/widgets/pull/77'
+                                html_url = 'https://github.com/acme/service.api/pull/77'
                                 state = 'open'
                                 user = [pscustomobject]@{ login = 'octocat' }
                                 head = [pscustomobject]@{ ref = 'feature/billing-validation' }
@@ -1104,7 +1111,7 @@ if (Test-Path $kickstartViaPrProfile) {
                         )
                     }
 
-                    if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/77/files') {
+                    if ($Uri -eq 'https://api.github.com/repos/acme/service.api/pulls/77/files?per_page=100&page=1') {
                         return @([pscustomobject]@{ filename = 'src/AutoDetected.cs'; status = 'modified' })
                     }
 
@@ -1114,8 +1121,9 @@ if (Test-Path $kickstartViaPrProfile) {
                 Invoke-PrContext -Arguments @{}
             }
 
-            Assert-Equal -Name "Invoke-PrContext GitHub auto-detect: URL" -Expected 'https://github.com/acme/widgets/pull/77' -Actual $githubAutoResult.pr_url
+            Assert-Equal -Name "Invoke-PrContext GitHub auto-detect: URL" -Expected 'https://github.com/acme/service.api/pull/77' -Actual $githubAutoResult.pr_url
             Assert-Equal -Name "Invoke-PrContext GitHub auto-detect: source branch" -Expected 'feature/billing-validation' -Actual $githubAutoResult.source_branch
+            Assert-Equal -Name "Invoke-PrContext GitHub auto-detect: repository" -Expected 'acme/service.api' -Actual $githubAutoResult.repository
             Assert-Equal -Name "Invoke-PrContext GitHub auto-detect: changed file count" -Expected 1 -Actual @($githubAutoResult.changed_files).Count
 
             $adoResult = & {
@@ -1192,14 +1200,21 @@ if (Test-Path $kickstartViaPrProfile) {
                     throw "Unexpected ADO URI: $Uri"
                 }
 
-                Invoke-PrContext -Arguments @{ pr_url = 'https://dev.azure.com/contoso/Commerce/_git/Storefront/pullrequest/99' }
+                Invoke-PrContext -Arguments @{ pr_url = 'https://dev.azure.com/contoso/Commerce/_git/Storefront/pullrequest/99?path=/src/TaxService.cs&_a=overview' }
             }
 
             Assert-Equal -Name "Invoke-PrContext ADO URL: provider" -Expected 'azure-devops' -Actual $adoResult.provider
             Assert-Equal -Name "Invoke-PrContext ADO URL: title" -Expected 'Storefront tax alignment' -Actual $adoResult.title
+            Assert-Equal -Name "Invoke-PrContext ADO URL: resolved URL" -Expected 'https://dev.azure.com/contoso/Commerce/_git/Storefront/pullrequest/99?path=/src/TaxService.cs&_a=overview' -Actual $adoResult.pr_url
             Assert-Equal -Name "Invoke-PrContext ADO URL: linked issue count" -Expected 1 -Actual @($adoResult.linked_issues).Count
             Assert-Equal -Name "Invoke-PrContext ADO URL: changed file count" -Expected 2 -Actual @($adoResult.changed_files).Count
             Assert-Equal -Name "Invoke-PrContext ADO URL: first changed file path" -Expected '/src/TaxService.cs' -Actual $adoResult.changed_files[0].path
+
+            $gitHubRemoteInfo = Convert-RemoteToGitHubInfo -RemoteUrl 'https://github.com/acme/service.api.git'
+            Assert-Equal -Name "Convert-RemoteToGitHubInfo accepts dotted repo names" -Expected 'service.api' -Actual $gitHubRemoteInfo.repo
+
+            $adoRemoteInfo = Convert-RemoteToAdoInfo -RemoteUrl 'https://dev.azure.com/contoso/Commerce/_git/Storefront.Core.git'
+            Assert-Equal -Name "Convert-RemoteToAdoInfo accepts dotted repo names" -Expected 'Storefront.Core' -Actual $adoRemoteInfo.repo
         } finally {
             $env:GITHUB_TOKEN = $savedGithubToken
             $env:GH_TOKEN = $savedGhToken
@@ -1291,4 +1306,5 @@ $allPassed = Write-TestSummary -LayerName "Layer 2: Components"
 if (-not $allPassed) {
     exit 1
 }
+
 

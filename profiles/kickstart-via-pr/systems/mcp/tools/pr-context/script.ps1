@@ -49,7 +49,7 @@ function Get-CurrentGitBranch {
 function Convert-RemoteToGitHubInfo {
     param([string]$RemoteUrl)
 
-    if ($RemoteUrl -match 'github\.com[:/](?<owner>[^/]+)/(?<repo>[^/.]+?)(?:\.git)?$') {
+    if ($RemoteUrl -match 'github\.com[:/](?<owner>[^/]+)/(?<repo>[^/]+?)(?:\.git)?$') {
         return @{
             owner = $matches["owner"]
             repo = $matches["repo"]
@@ -63,9 +63,9 @@ function Convert-RemoteToAdoInfo {
     param([string]$RemoteUrl)
 
     $patterns = @(
-        'https://(?:[^@/]+@)?dev\.azure\.com/(?<org>[^/]+)/(?<project>[^/]+)/_git/(?<repo>[^/.]+?)(?:\.git)?$',
-        'git@ssh\.dev\.azure\.com:v3/(?<org>[^/]+)/(?<project>[^/]+)/(?<repo>[^/.]+?)(?:\.git)?$',
-        'https://(?<org>[^/.]+)\.visualstudio\.com/(?<project>[^/]+)/_git/(?<repo>[^/.]+?)(?:\.git)?$'
+        'https://(?:[^@/]+@)?dev\.azure\.com/(?<org>[^/]+)/(?<project>[^/]+)/_git/(?<repo>[^/]+?)(?:\.git)?$',
+        'git@ssh\.dev\.azure\.com:v3/(?<org>[^/]+)/(?<project>[^/]+)/(?<repo>[^/]+?)(?:\.git)?$',
+        'https://(?<org>[^/.]+)\.visualstudio\.com/(?<project>[^/]+)/_git/(?<repo>[^/]+?)(?:\.git)?$'
     )
 
     foreach ($pattern in $patterns) {
@@ -84,7 +84,7 @@ function Convert-RemoteToAdoInfo {
 function Convert-PrUrlToGitHubInfo {
     param([string]$PullRequestUrl)
 
-    if ($PullRequestUrl -match '^https://github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)/pull/(?<number>\d+)(?:/.*)?$') {
+    if ($PullRequestUrl -match '^https://github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)/pull/(?<number>\d+)(?:[/?#].*)?$') {
         return @{
             owner = $matches["owner"]
             repo = $matches["repo"]
@@ -99,8 +99,8 @@ function Convert-PrUrlToAdoInfo {
     param([string]$PullRequestUrl)
 
     $patterns = @(
-        '^https://dev\.azure\.com/(?<org>[^/]+)/(?<project>[^/]+)/_git/(?<repo>[^/]+)/pullrequest/(?<id>\d+)(?:/.*)?$',
-        '^https://(?<org>[^/.]+)\.visualstudio\.com/(?<project>[^/]+)/_git/(?<repo>[^/]+)/pullrequest/(?<id>\d+)(?:/.*)?$'
+        '^https://dev\.azure\.com/(?<org>[^/]+)/(?<project>[^/]+)/_git/(?<repo>[^/]+)/pullrequest/(?<id>\d+)(?:[/?#].*)?$',
+        '^https://(?<org>[^/.]+)\.visualstudio\.com/(?<project>[^/]+)/_git/(?<repo>[^/]+)/pullrequest/(?<id>\d+)(?:[/?#].*)?$'
     )
 
     foreach ($pattern in $patterns) {
@@ -236,6 +236,34 @@ function Get-GitHubLinkedIssues {
     return $resolvedIssues
 }
 
+function Get-GitHubChangedFiles {
+    param(
+        [string]$Owner,
+        [string]$Repo,
+        [int]$PullRequestNumber
+    )
+
+    $allFiles = [System.Collections.ArrayList]::new()
+    $page = 1
+
+    while ($true) {
+        $fileUri = "https://api.github.com/repos/$Owner/$Repo/pulls/$PullRequestNumber/files?per_page=100&page=$page"
+        $pageFiles = @(Invoke-GitHubRequest -Uri $fileUri)
+        if ($pageFiles.Count -eq 0) {
+            break
+        }
+
+        foreach ($file in $pageFiles) {
+            [void]$allFiles.Add($file)
+        }
+
+
+        $page++
+    }
+
+    return @($allFiles)
+}
+
 function Convert-GitHubPrToResult {
     param(
         [string]$Owner,
@@ -243,9 +271,7 @@ function Convert-GitHubPrToResult {
         $PullRequest
     )
 
-    $fileUri = "https://api.github.com/repos/$Owner/$Repo/pulls/$($PullRequest.number)/files"
-    $files = @(Invoke-GitHubRequest -Uri $fileUri)
-
+    $files = Get-GitHubChangedFiles -Owner $Owner -Repo $Repo -PullRequestNumber $PullRequest.number
     $changedFiles = @($files | ForEach-Object {
         @{
             path = $_.filename

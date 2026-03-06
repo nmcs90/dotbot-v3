@@ -32,8 +32,12 @@ try {
                 }
             }
 
-            if ($Uri -eq "https://api.github.com/repos/acme/widgets/pulls/1/files") {
+            if ($Uri -eq "https://api.github.com/repos/acme/widgets/pulls/1/files?per_page=100&page=1") {
                 return @([pscustomobject]@{ filename = "src/Sample.cs"; status = "modified" })
+            }
+
+            if ($Uri -eq "https://api.github.com/repos/acme/widgets/pulls/1/files?per_page=100&page=2") {
+                return @()
             }
 
             if ($Uri -eq "https://api.github.com/repos/acme/widgets/issues/9") {
@@ -59,3 +63,4 @@ try {
 } finally {
     Remove-Item -Path $testRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
+
