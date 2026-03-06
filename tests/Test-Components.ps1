@@ -1056,6 +1056,10 @@ if (Test-Path $kickstartViaPrProfile) {
                         )
                     }
 
+                    if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/42/files?per_page=100&page=3') {
+                        return @()
+                    }
+
                     if ($Uri -eq 'https://api.github.com/repos/acme/widgets/issues/123') {
                         return [pscustomobject]@{
                             number = 123
@@ -1113,6 +1117,10 @@ if (Test-Path $kickstartViaPrProfile) {
 
                     if ($Uri -eq 'https://api.github.com/repos/acme/service.api/pulls/77/files?per_page=100&page=1') {
                         return @([pscustomobject]@{ filename = 'src/AutoDetected.cs'; status = 'modified' })
+                    }
+
+                    if ($Uri -eq 'https://api.github.com/repos/acme/service.api/pulls/77/files?per_page=100&page=2') {
+                        return @()
                     }
 
                     throw "Unexpected GitHub auto-detect URI: $Uri"
