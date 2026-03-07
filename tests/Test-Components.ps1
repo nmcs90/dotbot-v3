@@ -1131,6 +1131,42 @@ if (Test-Path $kickstartViaPrProfile) {
             Assert-Equal -Name "Invoke-PrContext GitHub auto-detect: repository" -Expected 'acme/service.api' -Actual $githubAutoResult.repository
             Assert-Equal -Name "Invoke-PrContext GitHub auto-detect: changed file count" -Expected 1 -Actual @($githubAutoResult.changed_files).Count
 
+            $githubCrossRepoIssues = & {
+                function Invoke-RestMethod {
+                    param(
+                        [string]$Method = 'Get',
+                        [string]$Uri,
+                        $Headers
+                    )
+
+                    if ($Uri -eq 'https://api.github.com/repos/other-org/other-repo/issues/456') {
+                        return [pscustomobject]@{
+                            number = 456
+                            title = 'Cross-repo issue'
+                            state = 'open'
+                            html_url = 'https://github.com/other-org/other-repo/issues/456'
+                        }
+                    }
+
+                    if ($Uri -eq 'https://api.github.com/repos/acme/widgets/issues/123') {
+                        return [pscustomobject]@{
+                            number = 123
+                            title = 'Local repo issue'
+                            state = 'open'
+                            html_url = 'https://github.com/acme/widgets/issues/123'
+                        }
+                    }
+
+                    throw "Unexpected GitHub linked issue URI: $Uri"
+                }
+
+                Get-GitHubLinkedIssues -Owner 'acme' -Repo 'widgets' -Texts @('See other-org/other-repo#456 and #123')
+            }
+
+            Assert-Equal -Name "Get-GitHubLinkedIssues cross-repo count" -Expected 2 -Actual @($githubCrossRepoIssues).Count
+            Assert-Equal -Name "Get-GitHubLinkedIssues cross-repo first key" -Expected 'other-org/other-repo#456' -Actual $githubCrossRepoIssues[0].key
+            Assert-Equal -Name "Get-GitHubLinkedIssues cross-repo second key" -Expected 'acme/widgets#123' -Actual $githubCrossRepoIssues[1].key
+
             $adoResult = & {
                 function Invoke-RestMethod {
                     param(

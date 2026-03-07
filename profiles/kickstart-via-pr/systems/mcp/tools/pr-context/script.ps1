@@ -197,7 +197,7 @@ function Get-GitHubLinkedIssues {
             [void]$issues.Add(@{ owner = $issueOwner; repo = $issueRepo; number = $number; key = $key })
         }
 
-        foreach ($match in [regex]::Matches($text, '(?<![A-Za-z0-9_.-]/)#(?<number>\d+)')) {
+        foreach ($match in [regex]::Matches($text, '(?<![A-Za-z0-9_.-/])#(?<number>\d+)')) {
             $number = $match.Groups["number"].Value
             $key = "$Owner/$Repo#$number"
             if ($seen.ContainsKey($key)) { continue }
@@ -530,3 +530,4 @@ function Invoke-PrContext {
 
     throw "Could not auto-detect a supported pull request provider from the current git remote."
 }
+
