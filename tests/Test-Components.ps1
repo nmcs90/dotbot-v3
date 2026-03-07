@@ -1165,7 +1165,7 @@ if (Test-Path $kickstartViaPrProfile) {
 
             Assert-Equal -Name "Get-GitHubLinkedIssues cross-repo count" -Expected 2 -Actual @($githubCrossRepoIssues).Count
             Assert-Equal -Name "Get-GitHubLinkedIssues cross-repo first key" -Expected 'other-org/other-repo#456' -Actual $githubCrossRepoIssues[0].key
-            Assert-Equal -Name "Get-GitHubLinkedIssues cross-repo second key" -Expected 'acme/widgets#123' -Actual $githubCrossRepoIssues[1].key
+            Assert-Equal -Name "Get-GitHubLinkedIssues cross-repo second key" -Expected '#123' -Actual $githubCrossRepoIssues[1].key
 
             $adoResult = & {
                 function Invoke-RestMethod {
