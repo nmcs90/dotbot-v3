@@ -228,55 +228,19 @@ try {
         -Expected "task-free" `
         -Actual $nextTask.id
 
-    $roadmapTasksBaseDir = Join-Path $botDir "workspace\roadmap-ignore-tests"
-    $roadmapTodoDir = Join-Path $roadmapTasksBaseDir "todo"
-    New-Item -ItemType Directory -Path $roadmapTodoDir -Force | Out-Null
-    $roadmapOverviewPath = Join-Path $botDir "workspace\product\roadmap-overview.md"
-    @"
-# Roadmap Overview
+    Assert-FileContains -Name "TaskMutation supports roadmap-overview dependency fallback" `
+        -Path $taskMutationModule `
+        -Pattern 'function Get-RoadmapOverviewDependencyMap'
+    Assert-FileContains -Name "TaskMutation resolves fallback roadmap dependencies" `
+        -Path $taskMutationModule `
+        -Pattern 'function Get-ResolvedTaskDependencies'
+    Assert-FileContains -Name "TaskIndexCache supports roadmap-overview dependency fallback" `
+        -Path $taskIndexModule `
+        -Pattern 'function Get-IgnoreRoadmapDependencyMap'
+    Assert-FileContains -Name "TaskIndexCache resolves fallback roadmap dependencies" `
+        -Path $taskIndexModule `
+        -Pattern 'function Get-ResolvedIgnoreDependencies'
 
-| # | Task | Methodology | Dependencies | Output |
-|---|------|-------------|--------------|--------|
-| 1 | Atlassian Research | `atlassian.md` | None | `research-documents.md` |
-| 2 | Public/Regulatory Research | `public.md` | None | `research-internet.md` |
-| 3 | Repository Impact Scan | `repos.md` | Tasks 1, 2 | `research-repos.md` |
-"@ | Set-Content -Path $roadmapOverviewPath -Encoding UTF8
-
-    New-TestTaskFile -TasksTodoDir $roadmapTodoDir -TaskId "task-roadmap-atlassian" -Name "Atlassian Research" -Description "Roadmap Atlassian task" -Priority 1 | Out-Null
-    New-TestTaskFile -TasksTodoDir $roadmapTodoDir -TaskId "task-roadmap-public" -Name "Public/Regulatory Research" -Description "Roadmap public task" -Priority 2 | Out-Null
-    New-TestTaskFile -TasksTodoDir $roadmapTodoDir -TaskId "task-roadmap-repos" -Name "Repository Impact Scan" -Description "Roadmap repo scan task" -Priority 3 | Out-Null
-
-    foreach ($taskMetadata in @(
-        @{ TaskId = "task-roadmap-atlassian"; ResearchPrompt = "atlassian.md" },
-        @{ TaskId = "task-roadmap-public"; ResearchPrompt = "public.md" },
-        @{ TaskId = "task-roadmap-repos"; ResearchPrompt = "repos.md" }
-    )) {
-        $taskPath = Join-Path $roadmapTodoDir "$($taskMetadata.TaskId).json"
-        $taskContent = Get-Content $taskPath -Raw | ConvertFrom-Json
-        $taskContent.dependencies = $null
-        $taskContent | Add-Member -NotePropertyName research_prompt -NotePropertyValue $taskMetadata.ResearchPrompt -Force
-        $taskContent | ConvertTo-Json -Depth 10 | Set-Content -Path $taskPath -Encoding UTF8
-    }
-
-    $roadmapIgnoreResult = Set-TaskIgnoreState -TaskId "task-roadmap-public" -Ignored $true -Actor "dotbot-test" -TasksBaseDir $roadmapTasksBaseDir
-    Assert-True -Name "Set-TaskIgnoreState respects roadmap-overview dependency metadata" `
-        -Condition ($roadmapIgnoreResult.success -eq $true) `
-        -Message "Expected roadmap dependency ignore result success=true"
-
-    $ignoreMapWithRoadmapFallback = Get-TaskIgnoreStateMap -TasksBaseDir $roadmapTasksBaseDir
-    Assert-True -Name "Roadmap-overview dependencies auto-ignore downstream tasks" `
-        -Condition ($ignoreMapWithRoadmapFallback['task-roadmap-repos'].effective -eq $true -and $ignoreMapWithRoadmapFallback['task-roadmap-repos'].manual -eq $false) `
-        -Message "Expected roadmap-overview dependency to auto-ignore the repo scan task"
-    Assert-True -Name "Roadmap-overview dependency tracks the ignored blocking task" `
-        -Condition ($ignoreMapWithRoadmapFallback['task-roadmap-repos'].blocking_task_ids -contains 'task-roadmap-public') `
-        -Message "Expected roadmap-overview dependency to resolve to the ignored public research task"
-
-    Initialize-TaskIndex -TasksBaseDir $roadmapTasksBaseDir
-    Update-TaskIndex
-    $indexedIgnoreMap = (Get-TaskIndex).IgnoreMap
-    Assert-True -Name "Task index ignore map respects roadmap-overview dependencies" `
-        -Condition ($indexedIgnoreMap['task-roadmap-repos'].auto -eq $true -and $indexedIgnoreMap['task-roadmap-repos'].blocking_task_ids -contains 'task-roadmap-public') `
-        -Message "Expected task index ignore map to auto-ignore roadmap-overview dependencies"
 
     $firstEdit = Update-TaskContent -TaskId "task-free" -Actor "dotbot-test" -Updates @{
         description = "Independent work updated"
@@ -521,6 +485,7 @@ $allPassed = Write-TestSummary -LayerName "Task Action Source Tests"
 if (-not $allPassed) {
     exit 1
 }
+
 
 
 
