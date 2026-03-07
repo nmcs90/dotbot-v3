@@ -1044,20 +1044,21 @@ if (Test-Path $kickstartViaPrProfile) {
                     }
 
                     if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/42/files?per_page=100&page=1') {
-                        return @(
-                            [pscustomobject]@{ filename = 'src/BillingService.cs'; status = 'modified' },
-                            [pscustomobject]@{ filename = 'tests/BillingServiceTests.cs'; status = 'added' }
-                        )
+                        $pageFiles = [System.Collections.ArrayList]::new()
+                        for ($index = 1; $index -le 100; $index++) {
+                            [void]$pageFiles.Add([pscustomobject]@{
+                                filename = ('src/File{0:D3}.cs' -f $index)
+                                status = 'modified'
+                            })
+                        }
+
+                        return @($pageFiles)
                     }
 
                     if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/42/files?per_page=100&page=2') {
                         return @(
                             [pscustomobject]@{ filename = 'docs/billing.md'; status = 'modified' }
                         )
-                    }
-
-                    if ($Uri -eq 'https://api.github.com/repos/acme/widgets/pulls/42/files?per_page=100&page=3') {
-                        return @()
                     }
 
                     if ($Uri -eq 'https://api.github.com/repos/acme/widgets/issues/123') {
@@ -1078,9 +1079,9 @@ if (Test-Path $kickstartViaPrProfile) {
             Assert-Equal -Name "Invoke-PrContext GitHub URL: provider" -Expected 'github' -Actual $githubResult.provider
             Assert-Equal -Name "Invoke-PrContext GitHub URL: title" -Expected 'Add billing validation' -Actual $githubResult.title
             Assert-Equal -Name "Invoke-PrContext GitHub URL: linked issue count" -Expected 1 -Actual @($githubResult.linked_issues).Count
-            Assert-Equal -Name "Invoke-PrContext GitHub URL: changed file count" -Expected 3 -Actual @($githubResult.changed_files).Count
-            Assert-Equal -Name "Invoke-PrContext GitHub URL: first changed file path" -Expected 'src/BillingService.cs' -Actual $githubResult.changed_files[0].path
-            Assert-Equal -Name "Invoke-PrContext GitHub URL: paginated file path included" -Expected 'docs/billing.md' -Actual $githubResult.changed_files[2].path
+            Assert-Equal -Name "Invoke-PrContext GitHub URL: changed file count" -Expected 101 -Actual @($githubResult.changed_files).Count
+            Assert-Equal -Name "Invoke-PrContext GitHub URL: first changed file path" -Expected 'src/File001.cs' -Actual $githubResult.changed_files[0].path
+            Assert-Equal -Name "Invoke-PrContext GitHub URL: paginated file path included" -Expected 'docs/billing.md' -Actual $githubResult.changed_files[100].path
 
             $githubAutoResult = & {
                 function git {
@@ -1117,10 +1118,6 @@ if (Test-Path $kickstartViaPrProfile) {
 
                     if ($Uri -eq 'https://api.github.com/repos/acme/service.api/pulls/77/files?per_page=100&page=1') {
                         return @([pscustomobject]@{ filename = 'src/AutoDetected.cs'; status = 'modified' })
-                    }
-
-                    if ($Uri -eq 'https://api.github.com/repos/acme/service.api/pulls/77/files?per_page=100&page=2') {
-                        return @()
                     }
 
                     throw "Unexpected GitHub auto-detect URI: $Uri"
@@ -1190,7 +1187,7 @@ if (Test-Path $kickstartViaPrProfile) {
                         }
                     }
 
-                    if ($Uri -eq 'https://dev.azure.com/contoso/Commerce/_apis/git/repositories/Storefront/pullRequests/99/iterations/3/changes?api-version=7.1') {
+                    if ($Uri -eq 'https://dev.azure.com/contoso/Commerce/_apis/git/repositories/Storefront/pullRequests/99/iterations/3/changes?$compareTo=0&$top=2000&$skip=0&api-version=7.1') {
                         return [pscustomobject]@{
                             changeEntries = @(
                                 [pscustomobject]@{
@@ -1202,6 +1199,21 @@ if (Test-Path $kickstartViaPrProfile) {
                                     item = [pscustomobject]@{ path = '/tests/TaxServiceTests.cs' }
                                 }
                             )
+                            nextSkip = 2
+                            nextTop = 2000
+                        }
+                    }
+
+                    if ($Uri -eq 'https://dev.azure.com/contoso/Commerce/_apis/git/repositories/Storefront/pullRequests/99/iterations/3/changes?$compareTo=0&$top=2000&$skip=2&api-version=7.1') {
+                        return [pscustomobject]@{
+                            changeEntries = @(
+                                [pscustomobject]@{
+                                    changeType = 'rename'
+                                    item = [pscustomobject]@{ path = '/docs/TaxGuide.md' }
+                                }
+                            )
+                            nextSkip = 0
+                            nextTop = 0
                         }
                     }
 
@@ -1215,8 +1227,9 @@ if (Test-Path $kickstartViaPrProfile) {
             Assert-Equal -Name "Invoke-PrContext ADO URL: title" -Expected 'Storefront tax alignment' -Actual $adoResult.title
             Assert-Equal -Name "Invoke-PrContext ADO URL: resolved URL" -Expected 'https://dev.azure.com/contoso/Commerce/_git/Storefront/pullrequest/99?path=/src/TaxService.cs&_a=overview' -Actual $adoResult.pr_url
             Assert-Equal -Name "Invoke-PrContext ADO URL: linked issue count" -Expected 1 -Actual @($adoResult.linked_issues).Count
-            Assert-Equal -Name "Invoke-PrContext ADO URL: changed file count" -Expected 2 -Actual @($adoResult.changed_files).Count
+            Assert-Equal -Name "Invoke-PrContext ADO URL: changed file count" -Expected 3 -Actual @($adoResult.changed_files).Count
             Assert-Equal -Name "Invoke-PrContext ADO URL: first changed file path" -Expected '/src/TaxService.cs' -Actual $adoResult.changed_files[0].path
+            Assert-Equal -Name "Invoke-PrContext ADO URL: cumulative change path included" -Expected '/docs/TaxGuide.md' -Actual $adoResult.changed_files[2].path
 
             $gitHubRemoteInfo = Convert-RemoteToGitHubInfo -RemoteUrl 'https://github.com/acme/service.api.git'
             Assert-Equal -Name "Convert-RemoteToGitHubInfo accepts dotted repo names" -Expected 'service.api' -Actual $gitHubRemoteInfo.repo

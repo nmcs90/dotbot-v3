@@ -257,6 +257,9 @@ function Get-GitHubChangedFiles {
             [void]$allFiles.Add($file)
         }
 
+        if ($pageFiles.Count -lt 100) {
+            break
+        }
 
         $page++
     }
@@ -349,15 +352,44 @@ function Get-AdoChangedFiles {
         return @()
     }
 
-    $changesUri = "https://dev.azure.com/$Org/$Project/_apis/git/repositories/$Repo/pullRequests/$PullRequestId/iterations/$($latestIteration[0].id)/changes?api-version=7.1"
-    $changes = Invoke-AdoRequest -Uri $changesUri
+    $allChanges = [System.Collections.ArrayList]::new()
+    $top = 2000
+    $skip = 0
 
-    return @($changes.changeEntries | ForEach-Object {
-        @{
-            path = $_.item.path
-            change_type = $_.changeType
+    while ($true) {
+        $changesUri = "https://dev.azure.com/$Org/$Project/_apis/git/repositories/$Repo/pullRequests/$PullRequestId/iterations/$($latestIteration[0].id)/changes?`$compareTo=0&`$top=$top&`$skip=$skip&api-version=7.1"
+        $changes = Invoke-AdoRequest -Uri $changesUri
+        $entries = @($changes.changeEntries)
+
+        foreach ($entry in $entries) {
+            [void]$allChanges.Add(@{
+                path = $entry.item.path
+                change_type = $entry.changeType
+            })
         }
-    })
+
+        $nextSkip = 0
+        if ($null -ne $changes.PSObject.Properties['nextSkip']) {
+            $nextSkip = [int]$changes.nextSkip
+        }
+
+        if ($entries.Count -eq 0) {
+            break
+        }
+
+        if ($nextSkip -gt $skip) {
+            $skip = $nextSkip
+            continue
+        }
+
+        if ($entries.Count -lt $top) {
+            break
+        }
+
+        $skip += $top
+    }
+
+    return @($allChanges)
 }
 
 function Get-AdoLinkedIssues {
