@@ -228,6 +228,24 @@ try {
         -Expected "task-free" `
         -Actual $nextTask.id
 
+    New-TestTaskFile -TasksTodoDir $todoDir -TaskId "task-stale-source" -Name "Stale ignored source" -Description "Ignored task with stale todo copy" -Priority 15 | Out-Null
+    New-TestTaskFile -TasksTodoDir $todoDir -TaskId "task-stale-dependent" -Name "Dependent on stale source" -Description "Should not stay blocked when source moved to done" -Priority 16 -Dependencies @("task-stale-source") | Out-Null
+    $staleIgnoreResult = Set-TaskIgnoreState -TaskId "task-stale-source" -Ignored $true -Actor "dotbot-test"
+    Assert-True -Name "Set-TaskIgnoreState can mark stale-source fixture ignored" `
+        -Condition ($staleIgnoreResult.success -eq $true) `
+        -Message "Expected stale-source ignore result success=true"
+    Copy-Item -Path (Join-Path $todoDir "task-stale-source.json") -Destination (Join-Path $tasksBaseDir "done\task-stale-source.json") -Force
+    $ignoreMapAfterStalePromotion = Get-TaskIgnoreStateMap -TasksBaseDir $tasksBaseDir
+    Assert-True -Name "Stale todo copy does not keep dependents auto-ignored after source is done" `
+        -Condition ($ignoreMapAfterStalePromotion['task-stale-dependent'].effective -eq $false) `
+        -Message "Expected stale todo copy in done/todo overlap not to keep dependent blocked"
+    Initialize-TaskIndex -TasksBaseDir $tasksBaseDir
+    Update-TaskIndex
+    $staleDependentIgnoreState = (Get-TaskIndex).IgnoreMap['task-stale-dependent']
+    Assert-True -Name "Task index ignore map ignores stale todo copies once task is done" `
+        -Condition (-not $staleDependentIgnoreState -or $staleDependentIgnoreState.effective -eq $false) `
+        -Message "Expected task index ignore map not to auto-block dependent from stale todo copy"
+
     Assert-FileContains -Name "TaskMutation supports roadmap-overview dependency fallback" `
         -Path $taskMutationModule `
         -Pattern 'function Get-RoadmapOverviewDependencyMap'
@@ -394,6 +412,9 @@ try {
     Assert-FileContains -Name "State builder surfaces roadmap-overview dependency data" `
         -Path (Join-Path $botDir "systems\ui\modules\StateBuilder.psm1") `
         -Pattern 'roadmap_dependencies'
+    Assert-FileContains -Name "State builder sorts roadmap tasks with deterministic tie-breakers" `
+        -Path (Join-Path $botDir "systems\ui\modules\StateBuilder.psm1") `
+        -Pattern 'Sort-Object priority_num, name, id'
     $viewsCssPath = Join-Path $botDir "systems\ui\static\css\views.css"
     Assert-FileContains -Name "Deleted archive uses a dedicated restore action" `
         -Path $roadmapActionsScript `

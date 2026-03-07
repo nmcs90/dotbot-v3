@@ -421,6 +421,35 @@ function Write-TaskArchive {
 
     return ($archiveRecord | ConvertTo-Json -Depth 30 | ConvertFrom-Json)
 }
+function Get-NonTodoTaskIds {
+    param(
+        [string]$TasksBaseDir
+    )
+
+    $resolvedBaseDir = Get-TasksBaseDir -TasksBaseDir $TasksBaseDir
+    $nonTodoTaskIds = @{}
+
+    foreach ($status in @('analysing', 'needs-input', 'analysed', 'in-progress', 'done', 'split', 'skipped', 'cancelled')) {
+        $statusDir = Join-Path $resolvedBaseDir $status
+        if (-not (Test-Path $statusDir)) {
+            continue
+        }
+
+        foreach ($file in @(Get-ChildItem -Path $statusDir -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+            try {
+                $task = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
+                if ($task.id) {
+                    $nonTodoTaskIds[$task.id] = $true
+                }
+            } catch {
+                Write-Warning "[TaskMutation] Failed to read non-todo task file '$($file.FullName)': $_"
+            }
+        }
+    }
+
+    return $nonTodoTaskIds
+}
+
 function Get-TodoTaskLookup {
     param(
         [string]$TasksBaseDir
@@ -430,12 +459,17 @@ function Get-TodoTaskLookup {
     $lookup = @{}
     $referenceMap = @{}
     $orderedTasks = [System.Collections.Generic.List[object]]::new()
+    $excludedTaskIds = Get-NonTodoTaskIds -TasksBaseDir $paths.TasksBaseDir
 
     $files = Get-ChildItem -Path $paths.TodoDir -Filter "*.json" -File -ErrorAction SilentlyContinue
     foreach ($file in $files) {
         try {
             $task = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
             if (-not $task.id) {
+                continue
+            }
+
+            if ($excludedTaskIds.ContainsKey($task.id)) {
                 continue
             }
 

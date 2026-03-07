@@ -27,7 +27,8 @@ $script:TaskIndex = @{
 function Initialize-TaskIndex {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$TasksBaseDir
+        [string]$TasksBaseDir,
+        [array]$TodoTasks
     )
 
     # Ensure directory exists
@@ -200,7 +201,8 @@ function Get-ResolvedIgnoreDependencies {
 
 function Get-TaskIgnoreLookup {
     param(
-        [string]$TasksBaseDir
+        [string]$TasksBaseDir,
+        [array]$TodoTasks
     )
 
     $todoDir = Join-Path $TasksBaseDir 'todo'
@@ -213,17 +215,28 @@ function Get-TaskIgnoreLookup {
     $orderedTasks = [System.Collections.Generic.List[object]]::new()
     $roadmapDependencyMap = Get-IgnoreRoadmapDependencyMap -TasksBaseDir $TasksBaseDir
 
-    foreach ($file in @(Get-ChildItem -Path $todoDir -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
-        try {
-            $task = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
+    if ($TodoTasks) {
+        foreach ($task in @($TodoTasks)) {
             if (-not $task.id) {
                 continue
             }
 
             $tasks[$task.id] = $task
             $null = $orderedTasks.Add($task)
-        } catch {
-            Write-Warning "[TaskIndex] Failed to read ignore state from '$($file.FullName)': $_"
+        }
+    } else {
+        foreach ($file in @(Get-ChildItem -Path $todoDir -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+            try {
+                $task = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
+                if (-not $task.id) {
+                    continue
+                }
+
+                $tasks[$task.id] = $task
+                $null = $orderedTasks.Add($task)
+            } catch {
+                Write-Warning "[TaskIndex] Failed to read ignore state from '$($file.FullName)': $_"
+            }
         }
     }
 
@@ -391,7 +404,7 @@ function Update-TaskIndex {
         foreach ($file in $files) {
             try {
                 $content = Get-Content -Path $file.FullName -Raw | ConvertFrom-Json
-                $entry = @{
+                $entry = [PSCustomObject]@{
                     id = $content.id
                     name = $content.name
                     description = $content.description
@@ -411,6 +424,7 @@ function Update-TaskIndex {
                     working_dir = $content.working_dir
                     external_repo = $content.external_repo
                     research_prompt = $content.research_prompt
+                    ignore = $content.ignore
                 }
 
                 switch ($status) {
@@ -466,10 +480,16 @@ function Update-TaskIndex {
             }
         }
     }
-    $script:TaskIndex.IgnoreMap = Get-TaskIgnoreLookup -TasksBaseDir $baseDir
+    $script:TaskIndex.IgnoreMap = Get-TaskIgnoreLookup -TasksBaseDir $baseDir -TodoTasks @($script:TaskIndex.Todo.Values)
     foreach ($taskId in @($script:TaskIndex.Todo.Keys)) {
-        if ($script:TaskIndex.IgnoreMap.ContainsKey($taskId)) {
+        if (-not $script:TaskIndex.IgnoreMap.ContainsKey($taskId)) {
+            continue
+        }
+
+        if ($script:TaskIndex.Todo[$taskId].PSObject.Properties['ignore_state']) {
             $script:TaskIndex.Todo[$taskId].ignore_state = $script:TaskIndex.IgnoreMap[$taskId]
+        } else {
+            $script:TaskIndex.Todo[$taskId] | Add-Member -NotePropertyName 'ignore_state' -NotePropertyValue $script:TaskIndex.IgnoreMap[$taskId] -Force
         }
     }
 
@@ -902,6 +922,7 @@ Export-ModuleMember -Function @(
     'Reset-TaskIndex',
     'Stop-TaskIndexWatcher'
 )
+
 
 
 

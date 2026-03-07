@@ -308,7 +308,7 @@ function Get-BotState {
                     }
                 } catch { $null }
             } | Where-Object { $_ -ne $null } |
-            Sort-Object priority_num |
+            Sort-Object priority_num, name, id |
             ForEach-Object {
                 @{
                     id = $_.id
@@ -356,7 +356,7 @@ function Get-BotState {
                 }
             } |
             Where-Object { $_ -ne $null } |
-            Sort-Object priority_num |
+            Sort-Object priority_num, name, id |
             Select-Object -First 100 |
             ForEach-Object {
                 @{
@@ -622,4 +622,5 @@ function Get-BotState {
 }
 
 Export-ModuleMember -Function @('Initialize-StateBuilder', 'Get-BotState')
+
 
