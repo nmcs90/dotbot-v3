@@ -17,9 +17,9 @@ Import-Module "$PSScriptRoot\Test-Helpers.psm1" -Force
 $repoRoot = Get-RepoRoot
 
 Write-Host ""
-Write-Host "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•" -ForegroundColor Blue
+Write-Host "======================================================================" -ForegroundColor Blue
 Write-Host "  Source Task Action Tests" -ForegroundColor Blue
-Write-Host "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•" -ForegroundColor Blue
+Write-Host "======================================================================" -ForegroundColor Blue
 Write-Host ""
 
 Reset-TestResults
