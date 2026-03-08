@@ -612,7 +612,7 @@ function Get-BotState {
         }
         instances = $instances
         steering = $steeringStatus
-        product_docs = @(Get-ChildItem -Path (Join-Path $botRoot "workspace\product") -Filter "*.md" -ErrorAction SilentlyContinue).Count
+        product_docs = @(Get-ChildItem -Path (Join-Path $botRoot "workspace\product") -Filter "*.md" -File -Recurse -ErrorAction SilentlyContinue).Count
     }
 
     # Cache the result
@@ -622,5 +622,3 @@ function Get-BotState {
 }
 
 Export-ModuleMember -Function @('Initialize-StateBuilder', 'Get-BotState')
-
-
