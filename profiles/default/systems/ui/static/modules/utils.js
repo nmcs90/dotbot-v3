@@ -228,9 +228,9 @@ function formatDuration(startIso, endIso) {
         const parts = [];
 
         if (days > 0) parts.push(`${days}d`);
-        if (hours > 0 || parts.length > 0) parts.push(`${hours}h`);
-        if (mins > 0 || parts.length > 0) parts.push(`${mins}m`);
-        parts.push(`${secs}s`);
+        if (hours > 0) parts.push(`${hours}h`);
+        if (mins > 0) parts.push(`${mins}m`);
+        if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
 
         return parts.join(' ');
     } catch (e) {
@@ -246,7 +246,7 @@ function formatDuration(startIso, endIso) {
  */
 function getTaskDurationStart(task) {
     if (!task) return '';
-    return task.analysis_started_at || task.started_at || task.created_at || '';
+    return task.analysis_started_at || task.started_at || '';
 }
 
 /**
